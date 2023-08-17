@@ -1,7 +1,7 @@
 #include <RadioLib.h>
 #include <string.h>
 
-#define LEDtx 9
+#define LEDtx 9                                         //pinout of the board
 #define LEDrx 2
 #define CSS1 3
 #define DIO11 6
@@ -14,7 +14,6 @@
 
 SX1280 radio = new Module(CSS1, DIO11, NRST1, BUSY1);   //tx pin 17
 SX1280 radio2 = new Module(CSS2, DIO12, NRST2, BUSY2);  //rx pin 16
-//EasyNex myNex(Serial1);
 
 
 int transmissionState = RADIOLIB_ERR_NONE;
@@ -31,7 +30,6 @@ int Rssi = 0;
 int recivedBytes = 0;
 unsigned long int Time = 0;
 unsigned long int msgtimeTX = 0;
-int kbps = 0;
 
 
 
@@ -43,13 +41,12 @@ void setup() {
     pinMode(LEDrx, OUTPUT);
     pinMode(LEDtx, OUTPUT);
   // initialize SX1280 with default settings
-  int state=radio.beginFLRC(2455.0, 325, 3, 0, 16, 0);    //TX AIR  rx gnd    2415.0
+  int state=radio.beginFLRC(2455.0, 325, 3, -2, 16, 0);    //TX AIR  set two different frquencies for the rx and tx, swap them for the air and gnd unit
   Serial.println(state);
-  state = radio2.beginFLRC(2455.0, 325, 3, 0, 16, 0);  // RX AIR  tx gnd
+  state = radio2.beginFLRC(2455.0, 325, 3, -2, 16, 0);  // RX AIR    output power -2 -> 34 dB, -18 ->20 dB  you can set any power in this range (check for legality)
   Serial.println(state);
   uint8_t syncWord[] = { 0x01, 0x23, 0x45, 0x67 };
   radio.setSyncWord(syncWord, 4);
-  uint8_t syncWord2[] = { 0x11, 0x53, 0x44, 0x97 };
   radio2.setSyncWord(syncWord, 4);
   radio.setDio1Action(setFlagTX);
   radio2.setDio1Action(setFlagRX);
@@ -71,21 +68,20 @@ void setFlagRX(void) {
 }
 
 void loop() {
-  while (Serial.available() > 0 && recivedBytes < MaxMessageSize) {
-    
-      Message[recivedBytes] = Serial.read();
+  while (Serial.available() > 0 && recivedBytes < MaxMessageSize) {             //change Serial with Serial1 for the air, and vice versa
+      Message[recivedBytes] = Serial.read();                                    //change Serial with Serial1 for the air, and vice versa
       recivedBytes++;
-      msgtimeTX=millis();
-    
+      msgtimeTX=millis();  
   }
-  if(Serial.available()==0 && millis()-msgtimeTX>50 && recivedBytes!=0){
+  
+  if(Serial.available()==0 && millis()-msgtimeTX>50 && recivedBytes!=0){       //change Serial with Serial1 for the air, and vice versa (this function sends incomplete messages after 50millis, for higherd bauds lower it)
     for(int i=recivedBytes;i<MaxMessageSize;i++){
       Message[i]=0;}
       recivedBytes=MaxMessageSize;
       msgtimeTX=millis();
     }
   
-  if (transmittedFlag == true && recivedBytes >= MaxMessageSize) {  //TX when message full and flag permits
+  if (transmittedFlag == true && recivedBytes >= MaxMessageSize) {            //TX when message full and flag permits
     digitalWrite(LEDtx, HIGH);
     recivedBytes = 0;
     transmittedFlag = false;
@@ -95,21 +91,18 @@ void loop() {
   }
 
 
-  if (receivedFlag) {  //RX packet ready to serialize every time is recived something
+  if (receivedFlag) {                                                        //RX packet ready to serialize every time is recived something
     // reset flag
     receivedFlag = false;
     digitalWrite(LEDrx, HIGH);
     int state2 = radio2.readData(MSG, MaxMessageSize);
     //Serial.println(radio2.getRSSI());
-    Rssi = map(radio2.getRSSI(),-106,0,0,254);
+    Rssi = map(radio2.getRSSI(),-106,0,0,254);                              //get an rssi to build mavlink radio message,future implementation
       for (int i = 0; i < MaxMessageSize; i++) {
-        //Serial.print(char(MSG[i]));
         Serial.print(char(MSG[i]));
-        Serial1.print(char(MSG[i]));//mirror msg to ext port
+        Serial1.print(char(MSG[i]));                                        //mirror msg to ext port
       }                     
     radio2.startReceive();  //starat reciving new msg
     digitalWrite(LEDrx, LOW);
-    
   }
- 
 }
