@@ -16,3 +16,4 @@ The goal is to achive a flexible platform for makers with little knowledge in pr
 - One sx1280 can be used for RX, TX and ranging.
 - Hihg speed and long ange FLRC modulation, or LoRa comminication selectable.
 
+![](https://ibb.co/Zxy1cjF)
