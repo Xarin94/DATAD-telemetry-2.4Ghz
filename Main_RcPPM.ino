@@ -2,11 +2,6 @@
 #include <string.h>
 #include <PPMReader.h>
 
-bfs::SbusRx sbus_rx(&Serial4);  //use SERIAL4 for Sbus RX pin for the ground trasmitter / TX for the air unit
-bfs::SbusTx sbus_tx(&Serial4);
-bfs::SbusData data;
-
-
 //////////////pinout of the board//////////////
 //////////////////DO NOT CHANGE////////////////
 
@@ -56,14 +51,10 @@ unsigned long int msgtimeTX = 0;
 
 
 void setup() {
-  SbusTimer = millis();
+  RCbusTimer = millis();
   msgtimeTX = micros();
   Serial.begin(115200);
   Serial1.begin(115200);  //set if serial output is needed at the gnd station / air port
-  if (SbusID >= 1) {
-    sbus_rx.Begin();
-    sbus_tx.Begin();
-  }
   pinMode(LEDrx, OUTPUT);
   pinMode(LEDtx, OUTPUT);
   if (RadioType == 0) {
