@@ -15,5 +15,5 @@ The goal is to achive a flexible platform for makers with little knowledge in pr
 - Full duplex: one sx1280 amplified at 2w maximum and one specific for reception.
 - One sx1280 can be used for RX, TX and ranging.
 - High speed and long ange FLRC modulation, or LoRa comminication selectable.
-
+- Added the possibilty to read a PPM from a RC controller and inject in the autopilot via Mavlink messages.
 
