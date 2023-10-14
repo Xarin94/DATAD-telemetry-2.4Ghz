@@ -21,11 +21,11 @@
 ///////////Radio params/////////////////////////
 
 #define RadioType 0      //1 air 0 gnd
-#define Rxfreq 2475      //rx frequncy-> different from tx
+#define Rxfreq 2415      //rx frequncy-> different from tx
 #define Txfreq 2475      //select between 2400 and 2480 mhz
 #define SPD 650          //speed kbps-> 325 / 650 / 1300
-#define TxPower -2       //output power -2 -> 34 dB, -18 ->20 dB  you can set any power in this range (check for legality)
-#define TelemID 1        //ID of he messages for the mavlink messages (0-254)
+#define TxPower -18       //output power -2 -> 34 dB, -18 ->20 dB  you can set any power in this range (check for legality)
+#define TelemID 25        //ID of he messages for the mavlink messages (0-254)
 #define RCbusID 12       //-1 if not used (additional id for sbus)
 #define RCbusrate 50     //delay in milliseconds for the sbus rate
 #define RCbuschannels 8  //numers of ppm channels
@@ -40,7 +40,7 @@ SX1280 radio2 = new Module(CSS2, DIO12, NRST2, BUSY2);  //rx pin 16
 
 int transmissionState = RADIOLIB_ERR_NONE;
 int num = 0;
-const uint8_t MaxMessageSize = 112 + 2;
+const uint8_t MaxMessageSize = 120;
 uint8_t Message[MaxMessageSize];
 uint8_t MSG[MaxMessageSize];
 int msgrx = 0;
@@ -54,6 +54,7 @@ unsigned long int msgtimeTX = 0;
 void setup() {
   RCbusTimer = millis();
   msgtimeTX = micros();
+  SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
   Serial.begin(115200);
   Serial1.begin(115200);  //set if serial output is needed at the gnd station / air port
   pinMode(LEDrx, OUTPUT);
@@ -94,30 +95,30 @@ void setFlagRX(void) {
 }
 
 void loop() {
-  while (Serial.available() > 0 && recivedBytes < MaxMessageSize) {  //change Serial with Serial1 for the air, and vice versa
+  while (Serial.available() > 0 && recivedBytes <= MaxMessageSize) {  //change Serial with Serial1 for the air, and vice versa
     if (recivedBytes == 2) {
       Message[0] = TelemID;
       Message[1] = 0;
     }
     Message[recivedBytes] = Serial.read();  //change Serial with Serial1 for the air, and vice versa
     recivedBytes++;
-    msgtimeTX = millis();
+    msgtimeTX = micros();
   }
 
-  if (Serial.available() == 0 && micros() - msgtimeTX > 500 && recivedBytes != 2) {  //change Serial with Serial1 for the air, and vice versa (this function sends incomplete messages after 50millis, for higherd bauds lower it)
+  if (Serial.available() == 0 && micros() - msgtimeTX > 5000 && recivedBytes > 2) {  //change Serial with Serial1 for the air, and vice versa (this function sends incomplete messages after 50millis, for higherd bauds lower it)
     for (int i = recivedBytes; i < MaxMessageSize; i++) {
-      Message[i] = 0;
+      Message[i] = '\0';
     }
     recivedBytes = MaxMessageSize;
-    msgtimeTX = millis();
+    msgtimeTX = micros();
   }
 
-  if (millis() - RCbusTimer > RCbusrate && recivedBytes == 2 && RadioType == 0 && RCbusID != -1) {
+  if (millis() - RCbusTimer > RCbusrate && recivedBytes == 2 && RadioType == 0 && RCbusID != -1 && ppm.latestValidChannelValue(1, 0)!=0) {
     Message[0] = 254;  //specific for sbus messsage
     Message[1] = RCbusID;
     for (int i = 0; i < RCbuschannels * 2; i = i + 2) {
-      Message[i + 2] = ppm.latestValidChannelValue(i+2 / 2, 0) & 0xff;
-      Message[i + 3] = (ppm.latestValidChannelValue(i+2 / 2, 0) >> 8);
+      Message[i + 2] = ppm.latestValidChannelValue((i+2)/2, 0) & 0xff;
+      Message[i + 3] = (ppm.latestValidChannelValue((i+2)/2, 0) >> 8);
     }
     RCbusTimer = millis();
     recivedBytes = MaxMessageSize;
