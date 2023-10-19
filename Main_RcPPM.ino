@@ -2,6 +2,7 @@
 #include <string.h>
 #include <PPMReader.h>
 #include <mavlink.h>
+#include <PulsePositionIMXRT.h>
 
 //////////////pinout of the board//////////////
 //////////////////DO NOT CHANGE////////////////
@@ -24,15 +25,17 @@
 #define Rxfreq 2415      //rx frequncy-> different from tx
 #define Txfreq 2475      //select between 2400 and 2480 mhz
 #define SPD 650          //speed kbps-> 325 / 650 / 1300
-#define TxPower -18       //output power -2 -> 34 dB, -18 ->20 dB  you can set any power in this range (check for legality)
-#define TelemID 25        //ID of he messages for the mavlink messages (0-254)
+#define TxPower -2      //output power -2 -> 34 dB, -18 ->20 dB  you can set any power in this range (check for legality)
+#define TelemID 25       //ID of he messages for the mavlink messages (0-254)
 #define RCbusID 12       //-1 if not used (additional id for sbus)
 #define RCbusrate 50     //delay in milliseconds for the sbus rate
-#define RCbuschannels 8  //numers of ppm channels
-#define RCbuspin 16      //Rx serial 4 pin
+#define RCbuschannels 8  //numers of ppm channels       mavlink max 8         ppm out max 16
+#define RCbuspin 15      //Rx serial 4 pin    pins:  6, 9, 10, 11, 12, 13, 14, 15, 18, 19 capable of ppm out precisely
+#define RCoutype 2       //type of PPM output on air unit 1-> mavlink mix  2-> PPPm out on RXbuspin
 ////////////////////////////////////////////////
 
 PPMReader ppm(RCbuspin, RCbuschannels);
+PulsePositionOutput PPMout;
 
 SX1280 radio = new Module(CSS1, DIO11, NRST1, BUSY1);   //tx pin 17
 SX1280 radio2 = new Module(CSS2, DIO12, NRST2, BUSY2);  //rx pin 16
@@ -54,6 +57,9 @@ unsigned long int msgtimeTX = 0;
 void setup() {
   RCbusTimer = millis();
   msgtimeTX = micros();
+  if (RCoutype == 2 && RadioType == 1) {
+    PPMout.begin(RCbuspin);
+  }
   SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
   Serial.begin(115200);
   Serial1.begin(115200);  //set if serial output is needed at the gnd station / air port
@@ -113,12 +119,12 @@ void loop() {
     msgtimeTX = micros();
   }
 
-  if (millis() - RCbusTimer > RCbusrate && recivedBytes == 2 && RadioType == 0 && RCbusID != -1 && ppm.latestValidChannelValue(1, 0)!=0) {
+  if (millis() - RCbusTimer > RCbusrate && recivedBytes == 2 && RadioType == 0 && RCbusID != -1 && ppm.latestValidChannelValue(1, 0) != 0) {
     Message[0] = 254;  //specific for sbus messsage
     Message[1] = RCbusID;
     for (int i = 0; i < RCbuschannels * 2; i = i + 2) {
-      Message[i + 2] = ppm.latestValidChannelValue((i+2)/2, 0) & 0xff;
-      Message[i + 3] = (ppm.latestValidChannelValue((i+2)/2, 0) >> 8);
+      Message[i + 2] = ppm.latestValidChannelValue((i + 2) / 2, 0) & 0xff;
+      Message[i + 3] = (ppm.latestValidChannelValue((i + 2) / 2, 0) >> 8);
     }
     RCbusTimer = millis();
     recivedBytes = MaxMessageSize;
@@ -131,7 +137,7 @@ void loop() {
     recivedBytes = 2;
     transmittedFlag = false;
     radio.transmit(Message, MaxMessageSize);
-    //radio.finishTransmit();
+    //radio.finishTransmit()#include <PulsePositionIMXRT.h>;
     digitalWrite(LEDtx, LOW);
   }
 
@@ -149,8 +155,8 @@ void loop() {
         Serial1.print(char(MSG[i]));  //mirror msg to ext port
       }
     }
-    if (MSG[0] == 254 && MSG[1] == RCbusID && RadioType == 1 && RCbusID != -1) {
-      //syntetize PPM out/ put in a mavlink message
+    if (MSG[0] == 254 && MSG[1] == RCbusID && RadioType == 1 && RCbusID != -1 && RCoutype == 1) {
+      //syntetize PPM  in a mavlink message
 
       mavlink_message_t message;
 
@@ -168,6 +174,12 @@ void loop() {
       mavlink_msg_rc_channels_override_pack(255, 254, &message, target_system, target_component, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8);
       uint16_t len = mavlink_msg_to_send_buffer(buf, &message);
       Serial1.write(buf, len);
+    }
+    if (MSG[0] == 254 && MSG[1] == RCbusID && RadioType == 1 && RCbusID != -1 && RCoutype == 2) {
+      //ppm synt
+      for (int i = 0; i < RCbuschannels; i++) {
+        PPMout.write(i + 1, ((MSG[i + 3] << 8) | MSG[i + 2]));
+      }
     }
     radio2.startReceive();  //starat reciving new msg
     digitalWrite(LEDrx, LOW);
