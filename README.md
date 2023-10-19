@@ -4,6 +4,7 @@
 This is the basic firmware of a teensy 4.0 to achieve a full duplex, programmable solution for a fast and long range datalink.
 
 The goal is to achive a flexible platform for makers with little knowledge in programming, of a fleixible and reliable radio link.
+[https://discuss.ardupilot.org/t/datad-2-4ghz-telemetry-link-2-w-open-source/104818](url)
 
 
 ## Features
