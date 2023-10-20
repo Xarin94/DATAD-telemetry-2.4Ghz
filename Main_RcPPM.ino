@@ -30,7 +30,7 @@
 #define RCbusID 12       //-1 if not used (additional id for sbus)
 #define RCbusrate 50     //delay in milliseconds for the sbus rate
 #define RCbuschannels 8  //numers of ppm channels       mavlink max 8         ppm out max 16
-#define RCbuspin 15      //Rx serial 4 pin    pins:  6, 9, 10, 11, 12, 13, 14, 15, 18, 19 capable of ppm out precisely
+#define RCbuspin 15      //Rx serial 4 pin    pins:   14, 15, 18 capable of ppm out precisely
 #define RCoutype 2       //type of PPM output on air unit 1-> mavlink mix  2-> PPPm out on RXbuspin
 ////////////////////////////////////////////////
 
