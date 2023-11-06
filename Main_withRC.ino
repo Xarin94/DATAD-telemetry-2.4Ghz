@@ -178,7 +178,7 @@ void loop() {
     if (MSG[0] == 254 && MSG[1] == RCbusID && RadioType == 1 && RCbusID != -1 && RCoutype == 2) {
       //ppm synt
       for (int i = 0; i < RCbuschannels; i++) {
-        PPMout.write(i + 1, ((MSG[i + 3] << 8) | MSG[i + 2]));
+        PPMout.write(i + 1, ((MSG[i*2 + 3] << 8) | MSG[i*2 + 2]));
       }
     }
     radio2.startReceive();  //starat reciving new msg
